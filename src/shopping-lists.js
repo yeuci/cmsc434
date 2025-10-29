@@ -34,6 +34,9 @@ document.addEventListener("DOMContentLoaded", () => {
   const deletePrompt = document.getElementById("deletePrompt");
   const confirmDeleteBtn = document.getElementById("confirmDeleteBtn");
 
+  if (renameListBtn) renameListBtn.remove();
+  if (deleteListBtn) deleteListBtn.remove();
+
   function openModal(el) {
     el.setAttribute("data-open", "true");
     el.setAttribute("aria-hidden", "false");
@@ -114,6 +117,8 @@ document.addEventListener("DOMContentLoaded", () => {
     if (shoppingListsEmpty) {
       shoppingListsEmpty.style.display = count === 0 ? "block" : "none";
     }
+
+    shoppingListsCount.style.fontSize = "1.8rem";
     if (count === 0) return;
 
     lists.sort((a, b) => b.createdAt - a.createdAt);
@@ -200,6 +205,8 @@ document.addEventListener("DOMContentLoaded", () => {
     if (shoppingItemsEmpty) {
       shoppingItemsEmpty.style.display = count === 0 ? "block" : "none";
     }
+    shoppingItemsCount.style.fontSize = "1.8rem";
+
     if (count === 0) return;
 
     items.sort((a, b) => b.addedAt - a.addedAt);
@@ -341,16 +348,6 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!currentListId) return;
     itemForm.reset();
     openModal(itemModal);
-  });
-  renameListBtn?.addEventListener("click", () => {
-    if (!currentListId) return;
-    openRenameListModal(currentListId);
-  });
-  deleteListBtn?.addEventListener("click", () => {
-    if (!currentListId) return;
-    const l = getListById(currentListId);
-    if (!l) return;
-    requestDeleteList(currentListId, l.name);
   });
 
   listForm?.addEventListener("submit", (e) => {

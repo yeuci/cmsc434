@@ -164,6 +164,8 @@ document.addEventListener("DOMContentLoaded", () => {
       itemCountEl.style.display = count > 0 ? "block" : "none";
     }
 
+    itemCountEl.style.fontSize = "1.8rem";
+
     items.sort((a, b) => {
       if (sortBy === "expiry") {
         const da = new Date(a.expiry || "9999-12-31");
