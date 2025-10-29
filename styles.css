@@ -524,3 +524,21 @@ input:focus {
 .legend {
   font-size: 1.8rem;
 }
+
+.nav.active {
+  background-color: var(--ds-accent);
+  color: #fff;
+}
+
+body[data-theme="light"] .nav.active {
+  background-color: #a1aab5;
+  color: var(--ds-ink);
+}
+
+body[data-theme="light"] input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(0);
+}
+
+body[data-theme="dark"] input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+}
