@@ -156,7 +156,7 @@ textarea {
 }
 
 .sort-label {
-  font-size: 1.4rem;
+  font-size: 1.6rem;
   color: var(--ds-muted);
 }
 
@@ -274,7 +274,7 @@ textarea {
   font-size: 1.9rem;
 }
 .badge {
-  font-size: 1.2rem;
+  font-size: 1.45rem;
   padding: 0.1rem 0.6rem;
   border-radius: 999px;
   border: 1px solid var(--border);
@@ -541,4 +541,22 @@ body[data-theme="light"] input[type="date"]::-webkit-calendar-picker-indicator {
 
 body[data-theme="dark"] input[type="date"]::-webkit-calendar-picker-indicator {
   filter: invert(1);
+}
+
+#settingsForm {
+  font-size: 1.8rem;
+}
+
+#settingsForm > *,
+#settingsForm label > *,
+#settingsForm div > * {
+  font-size: inherit !important;
+}
+
+form label > * {
+  font-size: 1.6rem;
+}
+
+.nav span {
+  user-select: none;
 }

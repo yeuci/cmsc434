@@ -264,11 +264,16 @@ document.addEventListener("DOMContentLoaded", () => {
 
   addForm.addEventListener("submit", (e) => {
     e.preventDefault();
-    const name = ingNameInput.value.trim();
+    let name = ingNameInput.value.trim();
     const expiry = ingExpiryInput.value;
     if (!name) {
       ingNameInput.focus();
       return;
+    }
+
+    if (name.length > 17) {
+      name = name.slice(0, 15);
+      name += "...";
     }
 
     const items = loadItems();

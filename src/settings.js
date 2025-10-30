@@ -73,5 +73,7 @@ document.addEventListener("DOMContentLoaded", () => {
     syncFormFromSettings();
   });
 
+  // todo: other user prefs...
+
   syncFormFromSettings();
 });

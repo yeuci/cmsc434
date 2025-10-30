@@ -91,11 +91,13 @@ document.addEventListener("DOMContentLoaded", () => {
   function saveShoppingLists(arr) {
     localStorage.setItem(SHOP_KEY, JSON.stringify(arr));
   }
+
   function newId() {
     return crypto && crypto.randomUUID
       ? crypto.randomUUID()
       : `id_${Date.now()}_${Math.random().toString(36).slice(2)}`;
   }
+
   function getListById(id) {
     return loadShoppingLists().find((l) => l.id === id) || null;
   }
