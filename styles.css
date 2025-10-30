@@ -560,3 +560,90 @@ form label > * {
 .nav span {
   user-select: none;
 }
+
+.modal ol {
+  list-style: decimal !important;
+  list-style-position: outside !important;
+  padding-left: 2rem;
+}
+
+.modal ol li {
+  font-size: 1.8rem;
+}
+
+#recipesCount {
+  font-size: 1.8rem;
+}
+
+.recipes--page .sort-label,
+.recipes--page .badge,
+.recipes--page .btn.small {
+  font-size: 1.6rem;
+}
+
+.recipes--page .btn.small {
+  padding: 0.6rem 1.2rem;
+  border-radius: 10px;
+}
+
+.recipes--page :where(input, select, textarea) {
+  font-size: 1.6rem;
+  padding: 1rem 1.2rem;
+  border-radius: 0.8rem;
+}
+
+.recipes--page .page-header .header-actions {
+  margin-left: auto;
+  gap: 1rem;
+  display: flex;
+  align-items: center;
+}
+.recipes--page .page-header .row {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.8rem;
+  padding: 0.6rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--ds-bg);
+}
+#showAllLevelsToggle {
+  transform: scale(1.2);
+  accent-color: var(--ds-accent);
+}
+
+#recipesList .item {
+  padding: 1.4rem 1.6rem;
+  margin-bottom: 1rem;
+}
+#recipesList h2.item-name {
+  font-size: 2.4rem;
+  line-height: 1.3;
+  margin: 0.2rem 0 0.4rem;
+}
+#recipesList li.item:has(> h2.item-name) {
+  background: transparent;
+  border: none;
+  padding: 0.2rem 0 0;
+  margin-bottom: 0.6rem;
+}
+#recipesList .item .item-meta {
+  gap: 0.8rem 1.2rem;
+  font-size: 1.6rem;
+}
+#recipesList .row-actions .btn.small {
+  font-size: 1.6rem;
+  padding: 0.6rem 1.2rem;
+}
+
+#recipeModal ol {
+  list-style: decimal;
+  list-style-position: outside;
+  padding-left: 2rem;
+  margin: 0.4rem 0 0;
+  font-size: 1.6rem;
+  line-height: 1.6;
+}
+#recipeModal ol > li {
+  margin-bottom: 0.8rem;
+}
