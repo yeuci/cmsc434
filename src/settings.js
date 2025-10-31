@@ -47,7 +47,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function updateInventoryHeader(name) {
     if (!inventoryHeader) return;
-    inventoryHeader.textContent = name ? `Hey, ${name}!` : "Kitchen Inventory";
+    inventoryHeader.textContent = name ? `Hey, ${name}!` : "Refrigerator";
   }
 
   function applyCookingLevel(level) {

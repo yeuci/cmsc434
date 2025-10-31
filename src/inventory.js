@@ -12,6 +12,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const addForm = document.getElementById("addIngredientForm");
   const ingNameInput = document.getElementById("ingName");
   const ingExpiryInput = document.getElementById("ingExpiry");
+  const ingQtyInput = document.getElementById("ingQty"); // NEW
   const openAddModalBtn = document.getElementById("openAddModalBtn");
   const addSubmitBtn = addForm.querySelector("button[type='submit']");
 
@@ -78,7 +79,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
   function updateInventoryHeader(name) {
     if (!inventoryHeader) return;
-    inventoryHeader.textContent = name ? `Hey, ${name}!` : "Kitchen Inventory";
+    inventoryHeader.textContent = name ? `Hey, ${name}!` : "Refrigerator";
   }
 
   const STORAGE_KEY = "kitchenIngredients";
@@ -87,7 +88,9 @@ document.addEventListener("DOMContentLoaded", () => {
   function loadItems() {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
-      return raw ? (Array.isArray(JSON.parse(raw)) ? JSON.parse(raw) : []) : [];
+      const arr = raw ? (Array.isArray(JSON.parse(raw)) ? JSON.parse(raw) : []) : [];
+      // NEW: normalize qty for older items
+      return arr.map(it => ({ ...it, qty: Number.isFinite(+it?.qty) && +it.qty > 0 ? +it.qty : 1 }));
     } catch {
       return [];
     }
@@ -100,11 +103,6 @@ document.addEventListener("DOMContentLoaded", () => {
   }
   function saveSortBy(v) {
     localStorage.setItem(SORT_KEY, v);
-  }
-  function uuid() {
-    return crypto && crypto.randomUUID
-      ? crypto.randomUUID()
-      : `id_${Date.now()}_${Math.random().toString(36).slice(2)}`;
   }
 
   function fmtDateISOToLocal(iso) {
@@ -162,9 +160,8 @@ document.addEventListener("DOMContentLoaded", () => {
     if (itemCountEl) {
       itemCountEl.textContent = countText;
       itemCountEl.style.display = count > 0 ? "block" : "none";
+      itemCountEl.style.fontSize = "1.8rem";
     }
-
-    itemCountEl.style.fontSize = "1.8rem";
 
     items.sort((a, b) => {
       if (sortBy === "expiry") {
@@ -228,6 +225,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const meta = document.createElement("div");
       meta.className = "item-meta";
       meta.innerHTML = `
+        <span><strong>Qty:</strong> ${Number.isFinite(+it.qty) && +it.qty > 0 ? +it.qty : 1}</span>
         <span><strong>Expiry:</strong> ${fmtDateISOToLocal(it.expiry)}</span>
         <span><strong>Added:</strong> ${fmtTimestamp(it.addedAt)}</span>
         <span class="dot ${statusDotClass(it.expiry)}" title="status"></span>
@@ -245,6 +243,7 @@ document.addEventListener("DOMContentLoaded", () => {
     addModalTitle.textContent = "Add Ingredient";
     addSubmitBtn.textContent = "Add";
     addForm.reset();
+    ingQtyInput.value = "1"; // NEW default
     ingExpiryInput.value = new Date().toISOString().slice(0, 10);
     openModal(addModal);
   });
@@ -258,6 +257,7 @@ document.addEventListener("DOMContentLoaded", () => {
     addModalTitle.textContent = "Edit Ingredient";
     addSubmitBtn.textContent = "Save";
     ingNameInput.value = it.name || "";
+    ingQtyInput.value = (Number.isFinite(+it.qty) && +it.qty > 0 ? +it.qty : 1).toString(); // NEW
     ingExpiryInput.value = it.expiry || "";
     openModal(addModal);
   }
@@ -266,14 +266,16 @@ document.addEventListener("DOMContentLoaded", () => {
     e.preventDefault();
     let name = ingNameInput.value.trim();
     const expiry = ingExpiryInput.value;
+    let qty = parseInt(ingQtyInput.value, 10);
+    if (!Number.isFinite(qty) || qty < 1) qty = 1; // sanitize
+
     if (!name) {
       ingNameInput.focus();
       return;
     }
 
     if (name.length > 17) {
-      name = name.slice(0, 15);
-      name += "...";
+      name = name.slice(0, 15) + "...";
     }
 
     const items = loadItems();
@@ -281,7 +283,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (itemModalCtx.mode === "edit" && itemModalCtx.targetId) {
       const idx = items.findIndex((x) => x.id === itemModalCtx.targetId);
       if (idx !== -1) {
-        items[idx] = { ...items[idx], name, expiry, updatedAt: Date.now() };
+        items[idx] = { ...items[idx], name, expiry, qty, updatedAt: Date.now() }; // NEW qty
         saveItems(items);
       }
       itemModalCtx = { mode: "create", targetId: null };
@@ -296,6 +298,7 @@ document.addEventListener("DOMContentLoaded", () => {
           ? crypto.randomUUID()
           : `id_${Date.now()}_${Math.random().toString(36).slice(2)}`,
       name,
+      qty,          // NEW
       expiry,
       addedAt: Date.now(),
     });

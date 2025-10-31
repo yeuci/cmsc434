@@ -14,7 +14,7 @@
         <!-- INVENTORY PAGE -->
         <div class="inventory--page page active-page">
           <header class="page-header">
-            <h1 id="inventoryHeader">Kitchen Inventory</h1>
+            <h1 id="inventoryHeader">Refrigerator</h1>
             <div class="header-actions">
               <label for="sortSelect" class="sort-label">Sort by:</label>
               <select id="sortSelect" class="sort-select">
@@ -241,6 +241,21 @@
               required
             />
           </label>
+
+                <label>
+        Quantity
+        <input
+          type="number"
+          id="ingQty"
+          name="quantity"
+          min="1"
+          step="1"
+          inputmode="numeric"
+          placeholder="1"
+          required
+        />
+      </label>
+
           <label>
             Expiry date
             <input type="date" id="ingExpiry" name="expiry" required />
