@@ -56,21 +56,42 @@ document.addEventListener("DOMContentLoaded", () => {
   );
 
   const SETTINGS_KEY = "appSettings";
+  // function loadSettings() {
+  //   try {
+  //     const raw = localStorage.getItem(SETTINGS_KEY);
+  //     return raw
+  //       ? {
+  //           theme: "dark",
+  //           userName: "",
+  //           autoDeleteExpired: false,
+  //           ...JSON.parse(raw),
+  //         }
+  //       : { theme: "dark", userName: "", autoDeleteExpired: false };
+  //   } catch {
+  //     return { theme: "dark", userName: "", autoDeleteExpired: false };
+  //   }
+  // }
+
   function loadSettings() {
     try {
       const raw = localStorage.getItem(SETTINGS_KEY);
-      return raw
-        ? {
-            theme: "dark",
-            userName: "",
-            autoDeleteExpired: false,
-            ...JSON.parse(raw),
-          }
-        : { theme: "dark", userName: "", autoDeleteExpired: false };
+      const defaults = {
+        theme: "dark",
+        userName: "",
+        autoDeleteExpired: false,
+        cookingLevel: "beginner",
+      };
+      return raw ? { ...defaults, ...JSON.parse(raw) } : defaults;
     } catch {
-      return { theme: "dark", userName: "", autoDeleteExpired: false };
+      return {
+        theme: "dark",
+        userName: "",
+        autoDeleteExpired: false,
+        cookingLevel: "beginner",
+      };
     }
   }
+
   function applyTheme(theme) {
     const containerEl = document.querySelector(".container");
     const t = theme === "light" ? "light" : "dark";
