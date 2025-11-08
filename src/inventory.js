@@ -12,7 +12,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const addForm = document.getElementById("addIngredientForm");
   const ingNameInput = document.getElementById("ingName");
   const ingExpiryInput = document.getElementById("ingExpiry");
-  const ingQtyInput = document.getElementById("ingQty"); // NEW
+  const ingQtyInput = document.getElementById("ingQty");
   const openAddModalBtn = document.getElementById("openAddModalBtn");
   const addSubmitBtn = addForm.querySelector("button[type='submit']");
 
@@ -56,38 +56,67 @@ document.addEventListener("DOMContentLoaded", () => {
   );
 
   const SETTINGS_KEY = "appSettings";
-  // function loadSettings() {
-  //   try {
-  //     const raw = localStorage.getItem(SETTINGS_KEY);
-  //     return raw
-  //       ? {
-  //           theme: "dark",
-  //           userName: "",
-  //           autoDeleteExpired: false,
-  //           ...JSON.parse(raw),
-  //         }
-  //       : { theme: "dark", userName: "", autoDeleteExpired: false };
-  //   } catch {
-  //     return { theme: "dark", userName: "", autoDeleteExpired: false };
-  //   }
-  // }
+
+  function getAllergiesFromSettings() {
+    const s = loadSettings();
+    return Array.isArray(s.allergies)
+      ? s.allergies.map((x) => (x || "").toLowerCase().trim()).filter(Boolean)
+      : [];
+  }
+
+  function singularize(word) {
+    if (word.endsWith("ies") && word.length > 3) return word.slice(0, -3) + "y";
+    if (word.endsWith("oes") && word.length > 3) return word.slice(0, -2);
+    if (word.endsWith("es") && word.length > 2) return word.slice(0, -2);
+    if (word.endsWith("s") && word.length > 2) return word.slice(0, -1);
+    return word;
+  }
+
+  function tokenizeName(name) {
+    return (name || "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, " ")
+      .split(" ")
+      .map((w) => w.trim())
+      .filter(Boolean);
+  }
+
+  function findAllergyMatches(itemName, allergies) {
+    if (!itemName || !allergies?.length) return [];
+
+    const name = itemName.toLowerCase();
+    const matches = new Set();
+
+    for (const allergy of allergies) {
+      const a = (allergy || "").toLowerCase().trim();
+      if (!a) continue;
+
+      if (name.includes(a) || a.includes(name)) {
+        matches.add(allergy);
+      }
+    }
+
+    return [...matches];
+  }
 
   function loadSettings() {
     try {
       const raw = localStorage.getItem(SETTINGS_KEY);
       const defaults = {
-        theme: "dark",
+        theme: "light",
         userName: "",
         autoDeleteExpired: false,
         cookingLevel: "beginner",
+        allergies: [],
       };
       return raw ? { ...defaults, ...JSON.parse(raw) } : defaults;
     } catch {
       return {
-        theme: "dark",
+        theme: "light",
         userName: "",
         autoDeleteExpired: false,
         cookingLevel: "beginner",
+        allergies: [],
       };
     }
   }
@@ -109,9 +138,15 @@ document.addEventListener("DOMContentLoaded", () => {
   function loadItems() {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
-      const arr = raw ? (Array.isArray(JSON.parse(raw)) ? JSON.parse(raw) : []) : [];
-      // NEW: normalize qty for older items
-      return arr.map(it => ({ ...it, qty: Number.isFinite(+it?.qty) && +it.qty > 0 ? +it.qty : 1 }));
+      const arr = raw
+        ? Array.isArray(JSON.parse(raw))
+          ? JSON.parse(raw)
+          : []
+        : [];
+      return arr.map((it) => ({
+        ...it,
+        qty: Number.isFinite(+it?.qty) && +it.qty > 0 ? +it.qty : 1,
+      }));
     } catch {
       return [];
     }
@@ -163,6 +198,31 @@ document.addEventListener("DOMContentLoaded", () => {
     if (keep.length !== items.length) saveItems(keep);
   }
 
+  function sortItems(items, sortBy) {
+    if (!Array.isArray(items) || items.length < 2) return items;
+
+    return items.sort((a, b) => {
+      if (sortBy === "expiry") {
+        const da = new Date((a.expiry || "9999-12-31") + "T00:00:00");
+        const db = new Date((b.expiry || "9999-12-31") + "T00:00:00");
+        if (+da !== +db) return +da - +db;
+        return (b.addedAt || 0) - (a.addedAt || 0);
+      }
+
+      if (sortBy === "added") {
+        return (b.addedAt || 0) - (a.addedAt || 0);
+      }
+
+      if (sortBy === "name") {
+        const an = (a.name || "").toString();
+        const bn = (b.name || "").toString();
+        return an.localeCompare(bn, undefined, { sensitivity: "base" });
+      }
+
+      return 0;
+    });
+  }
+
   function render() {
     purgeExpiredItemsIfEnabled();
 
@@ -170,33 +230,18 @@ document.addEventListener("DOMContentLoaded", () => {
     applyTheme(settings.theme);
     updateInventoryHeader(settings.userName);
 
+    const allergies = getAllergiesFromSettings();
+
     const items = loadItems();
     const sortBy = loadSortBy();
 
-    const count = items.length;
-    const countText =
-      count === 1
-        ? "Refridergator has 1 item"
-        : `Refridergator has ${count} items`;
-    if (itemCountEl) {
-      itemCountEl.textContent = countText;
-      itemCountEl.style.display = count > 0 ? "block" : "none";
-      itemCountEl.style.fontSize = "1.8rem";
-    }
+    sortItems(items, sortBy);
 
-    items.sort((a, b) => {
-      if (sortBy === "expiry") {
-        const da = new Date(a.expiry || "9999-12-31");
-        const db = new Date(b.expiry || "9999-12-31");
-        if (+da !== +db) return +da - +db;
-        return b.addedAt - a.addedAt;
-      } else if (sortBy === "added") {
-        return b.addedAt - a.addedAt;
-      } else if (sortBy === "name") {
-        return a.name.localeCompare(b.name);
-      }
-      return 0;
-    });
+    const count = items.length;
+    itemCountEl.textContent =
+      count === 1 ? "You have 1 item" : `You have ${count} items`;
+    itemCountEl.style.display = count > 0 ? "block" : "none";
+    itemCountEl.style.fontSize = "1.8rem";
 
     listEl.innerHTML = "";
     if (items.length === 0) {
@@ -215,7 +260,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
       const name = document.createElement("span");
       name.className = "item-name";
-      name.textContent = it.name;
+      name.textContent = displayName(it.name);
+      name.title = it.name;
 
       const badge = document.createElement("span");
       badge.className = "badge";
@@ -246,16 +292,41 @@ document.addEventListener("DOMContentLoaded", () => {
       const meta = document.createElement("div");
       meta.className = "item-meta";
       meta.innerHTML = `
-        <span><strong>Qty:</strong> ${Number.isFinite(+it.qty) && +it.qty > 0 ? +it.qty : 1}</span>
-        <span><strong>Expiry:</strong> ${fmtDateISOToLocal(it.expiry)}</span>
-        <span><strong>Added:</strong> ${fmtTimestamp(it.addedAt)}</span>
-        <span class="dot ${statusDotClass(it.expiry)}" title="status"></span>
-      `;
+      <span><strong>Qty:</strong> ${
+        Number.isFinite(+it.qty) && +it.qty > 0 ? +it.qty : 1
+      }</span>
+      <span><strong>Expiry:</strong> ${fmtDateISOToLocal(it.expiry)}</span>
+      <span><strong>Added:</strong> ${fmtTimestamp(it.addedAt)}</span>
+      <span class="dot ${statusDotClass(it.expiry)}" title="status"></span>
+    `;
+
+      const matches = findAllergyMatches(it.name, allergies);
+      if (matches.length) {
+        const row = document.createElement("div");
+        row.className = "allergy-row";
+
+        const label = document.createElement("span");
+        label.className = "allergy-label";
+        label.innerHTML = `<span class="warn" aria-hidden="true">⚠️</span> Allergens:`;
+        row.appendChild(label);
+
+        matches.forEach((m) => {
+          const chip = document.createElement("span");
+          chip.className = "tag tag--allergy";
+          chip.textContent = m;
+          chip.title = `Matches allergy: ${m}`;
+          row.appendChild(chip);
+        });
+
+        meta.appendChild(row);
+      }
 
       li.append(head, actions, meta);
       listEl.appendChild(li);
     }
   }
+
+  window.renderInventory = render;
 
   let itemModalCtx = { mode: "create", targetId: null };
 
@@ -264,10 +335,15 @@ document.addEventListener("DOMContentLoaded", () => {
     addModalTitle.textContent = "Add Ingredient";
     addSubmitBtn.textContent = "Add";
     addForm.reset();
-    ingQtyInput.value = "1"; // NEW default
+    ingQtyInput.value = "1";
     ingExpiryInput.value = new Date().toISOString().slice(0, 10);
     openModal(addModal);
   });
+
+  function displayName(name) {
+    if (!name) return "";
+    return name.length > 15 ? name.slice(0, 15) + "..." : name;
+  }
 
   function openEditItemModal(itemId) {
     const items = loadItems();
@@ -278,7 +354,9 @@ document.addEventListener("DOMContentLoaded", () => {
     addModalTitle.textContent = "Edit Ingredient";
     addSubmitBtn.textContent = "Save";
     ingNameInput.value = it.name || "";
-    ingQtyInput.value = (Number.isFinite(+it.qty) && +it.qty > 0 ? +it.qty : 1).toString(); // NEW
+    ingQtyInput.value = (
+      Number.isFinite(+it.qty) && +it.qty > 0 ? +it.qty : 1
+    ).toString();
     ingExpiryInput.value = it.expiry || "";
     openModal(addModal);
   }
@@ -288,23 +366,29 @@ document.addEventListener("DOMContentLoaded", () => {
     let name = ingNameInput.value.trim();
     const expiry = ingExpiryInput.value;
     let qty = parseInt(ingQtyInput.value, 10);
-    if (!Number.isFinite(qty) || qty < 1) qty = 1; // sanitize
+    if (!Number.isFinite(qty) || qty < 1) qty = 1;
 
     if (!name) {
       ingNameInput.focus();
       return;
     }
 
-    if (name.length > 17) {
-      name = name.slice(0, 15) + "...";
-    }
+    // if (name.length > 17) {
+    //   name = name.slice(0, 15) + "...";
+    // }
 
     const items = loadItems();
 
     if (itemModalCtx.mode === "edit" && itemModalCtx.targetId) {
       const idx = items.findIndex((x) => x.id === itemModalCtx.targetId);
       if (idx !== -1) {
-        items[idx] = { ...items[idx], name, expiry, qty, updatedAt: Date.now() }; // NEW qty
+        items[idx] = {
+          ...items[idx],
+          name,
+          expiry,
+          qty,
+          updatedAt: Date.now(),
+        };
         saveItems(items);
       }
       itemModalCtx = { mode: "create", targetId: null };
@@ -319,7 +403,7 @@ document.addEventListener("DOMContentLoaded", () => {
           ? crypto.randomUUID()
           : `id_${Date.now()}_${Math.random().toString(36).slice(2)}`,
       name,
-      qty,          // NEW
+      qty,
       expiry,
       addedAt: Date.now(),
     });

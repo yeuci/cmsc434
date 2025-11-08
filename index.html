@@ -6,9 +6,9 @@
     <title>Kitchen App</title>
     <link rel="stylesheet" href="styles.css" />
   </head>
-  <body>
+  <body data-theme="light">
     <!-- main container -->
-    <div class="container">
+    <div class="container" data-theme="light">
       <!-- current page  -->
       <div class="current-page">
         <!-- INVENTORY PAGE -->
@@ -86,8 +86,6 @@
               "
             >
               <button id="backToListsBtn" class="btn">← Back</button>
-              <button id="renameListBtn" class="btn">Rename</button>
-              <button id="deleteListBtn" class="btn danger">Delete List</button>
               <button
                 id="addShoppingItemBtn"
                 class="btn primary"
@@ -117,7 +115,74 @@
         <div class="recipes--page page">
           <header class="page-header">
             <h1>Recipes</h1>
+            <div class="header-actions">
+              <button id="addRecipeBtn" class="btn primary">
+                + Add Recipe
+              </button>
+            </div>
           </header>
+        </div>
+
+        <!-- Add Recipe Modal -->
+        <div
+          id="addRecipeModal"
+          class="modal-backdrop"
+          data-open="false"
+          aria-hidden="true"
+        >
+          <div
+            class="modal"
+            role="dialog"
+            aria-labelledby="addRecipeModalTitle"
+            aria-modal="true"
+          >
+            <h2 id="addRecipeModalTitle">Add a New Recipe</h2>
+            <form id="recipeForm" class="form">
+              <label>
+                Recipe Name
+                <input
+                  id="recipeNameInput"
+                  type="text"
+                  placeholder="e.g., Pancakes"
+                  required
+                />
+              </label>
+
+              <label>
+                Skill Level
+                <select id="recipeLevelSelect">
+                  <option value="beginner">Beginner</option>
+                  <option value="intermediate">Intermediate</option>
+                  <option value="advanced">Advanced</option>
+                </select>
+              </label>
+
+              <label>
+                Ingredients (comma-separated)
+                <textarea
+                  id="recipeIngredientsInput"
+                  placeholder="flour, egg, milk"
+                  required
+                ></textarea>
+              </label>
+
+              <label>
+                Steps (one per line)
+                <textarea
+                  id="recipeStepsInput"
+                  placeholder="Step 1&#10;Step 2&#10;Step 3"
+                  required
+                ></textarea>
+              </label>
+
+              <div class="modal-actions">
+                <button type="submit" class="btn primary">Save Recipe</button>
+                <button type="button" class="btn" data-close-modal>
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
 
         <!-- SETTINGS PAGE -->
@@ -126,43 +191,94 @@
             <h1>Settings</h1>
           </header>
 
-          <form id="settingsForm" class="form settings-form">
-            <label>
-              Display name
-              <input type="text" id="userNameInput" placeholder="Your name" />
-            </label>
+          <div class="setting-block row mt-l">
+            <form id="settingsForm" class="form settings-form">
+              <label>
+                Display name
+                <input
+                  type="text"
+                  id="userNameInput"
+                  placeholder="Enter your name..."
+                />
+              </label>
 
-            <label>
-              Cooking level
-              <select id="cookingLevelSelect">
-                <option value="beginner">Beginner</option>
-                <option value="intermediate">Intermediate</option>
-                <option value="advanced">Advanced</option>
-              </select>
-            </label>
+              <label>
+                Cooking level
+                <select id="cookingLevelSelect">
+                  <option value="beginner">Beginner</option>
+                  <option value="intermediate">Intermediate</option>
+                  <option value="advanced">Advanced</option>
+                </select>
+              </label>
+            </form>
+          </div>
 
+          <div class="setting-block row">
+            <label class="allergyInput" for="allergyInput">Allergies</label>
+
+            <div class="allergy-input-wrap">
+              <input
+                id="allergyInput"
+                type="text"
+                placeholder="Type an allergy and press Enter"
+                form="settingsForm"
+                autocomplete="off"
+                class="form-input"
+              />
+              <button
+                type="button"
+                class="btn"
+                id="addAllergyBtn"
+                form="settingsForm"
+              >
+                Add
+              </button>
+            </div>
+
+            <div id="allergyChips" class="chip-list" aria-live="polite"></div>
+
+            <p class="settings-hint mt-m">
+              Add allergies one by one. Each will be shown in the refrigerator.
+            </p>
+          </div>
+
+          <div class="setting-block row">
             <label class="row">
-              <input type="checkbox" id="themeToggle" />
-              <span>Light mode</span>
+              <input type="checkbox" id="themeToggle" form="settingsForm" />
+              <span class="txt-m">Light mode</span>
             </label>
+          </div>
 
+          <div class="setting-block row">
             <label class="row">
-              <input type="checkbox" id="autoDeleteExpiredToggle" />
-              <span>Automatically delete expired items</span>
+              <input
+                type="checkbox"
+                id="autoDeleteExpiredToggle"
+                form="settingsForm"
+              />
+              <span class="txt-m">Automatically delete expired items</span>
             </label>
 
-            <p class="settings-hint">
+            <p class="settings-hint mt-m">
               When enabled, items that are past their expiry date will be
               removed automatically when you open or refresh the app.
             </p>
+          </div>
 
+          <div class="setting-block row">
             <div class="settings-actions">
-              <button type="submit" class="btn primary">Save</button>
+              <button
+                type="submit"
+                class="btn primary white-txt"
+                form="settingsForm"
+              >
+                Save
+              </button>
               <button type="button" class="btn" id="resetSettings">
                 Reset
               </button>
             </div>
-          </form>
+          </div>
         </div>
       </div>
 
@@ -242,19 +358,19 @@
             />
           </label>
 
-                <label>
-        Quantity
-        <input
-          type="number"
-          id="ingQty"
-          name="quantity"
-          min="1"
-          step="1"
-          inputmode="numeric"
-          placeholder="1"
-          required
-        />
-      </label>
+          <label>
+            Quantity
+            <input
+              type="number"
+              id="ingQty"
+              name="quantity"
+              min="1"
+              step="1"
+              inputmode="numeric"
+              placeholder="1"
+              required
+            />
+          </label>
 
           <label>
             Expiry date
@@ -361,6 +477,15 @@
         </form>
       </div>
     </div>
+
+    <!-- Toasts -->
+    <div
+      id="toastRegion"
+      class="toast-region"
+      role="region"
+      aria-live="polite"
+      aria-label="Notifications"
+    ></div>
 
     <!-- scripts and deferred loaders  -->
     <script src="./src/main.js"></script>

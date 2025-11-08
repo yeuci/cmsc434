@@ -3,21 +3,16 @@
 document.addEventListener("DOMContentLoaded", () => {
   const shoppingListsView = document.getElementById("shoppingListsView");
   const shoppingItemsView = document.getElementById("shoppingItemsView");
-
   const shoppingListsEl = document.getElementById("shoppingLists");
   const shoppingListTitle = document.getElementById("shoppingListTitle");
   const shoppingItemsEl = document.getElementById("shoppingItems");
-
   const addShoppingListBtn = document.getElementById("addShoppingListBtn");
   const backToListsBtn = document.getElementById("backToListsBtn");
   const addShoppingItemBtn = document.getElementById("addShoppingItemBtn");
-
   const shoppingListsEmpty = document.getElementById("shoppingListsEmpty");
   const shoppingListsCount = document.getElementById("shoppingListsCount");
   const shoppingItemsEmpty = document.getElementById("shoppingItemsEmpty");
   const shoppingItemsCount = document.getElementById("shoppingItemsCount");
-  const renameListBtn = document.getElementById("renameListBtn");
-  const deleteListBtn = document.getElementById("deleteListBtn");
 
   const listModal = document.getElementById("addShoppingListModal");
   const listModalTitle = document.getElementById("addShoppingListTitle");
@@ -26,18 +21,20 @@ document.addEventListener("DOMContentLoaded", () => {
   const listSubmitBtn = document.getElementById("shoppingListSubmitBtn");
 
   const itemModal = document.getElementById("addShoppingItemModal");
+  const itemModalTitle = document.getElementById("addShoppingItemTitle");
   const itemForm = document.getElementById("addShoppingItemForm");
   const itemNameInput = document.getElementById("shoppingItemNameInput");
+  const itemSubmitBtn = itemForm
+    ? itemForm.querySelector("button[type='submit']")
+    : null;
 
   const deleteModal = document.getElementById("deleteModal");
   const deleteTitle = document.getElementById("deleteModalTitle");
   const deletePrompt = document.getElementById("deletePrompt");
   const confirmDeleteBtn = document.getElementById("confirmDeleteBtn");
 
-  if (renameListBtn) renameListBtn.remove();
-  if (deleteListBtn) deleteListBtn.remove();
-
   function openModal(el) {
+    if (!el) return;
     el.setAttribute("data-open", "true");
     el.setAttribute("aria-hidden", "false");
     const f = el.querySelector("input, button, [data-close-modal]");
@@ -45,6 +42,7 @@ document.addEventListener("DOMContentLoaded", () => {
     document.addEventListener("keydown", escHandler);
   }
   function closeModal(el) {
+    if (!el) return;
     el.setAttribute("data-open", "false");
     el.setAttribute("aria-hidden", "true");
     document.removeEventListener("keydown", escHandler);
@@ -56,23 +54,11 @@ document.addEventListener("DOMContentLoaded", () => {
         .forEach(closeModal);
     }
   }
-  listModal
-    ?.querySelectorAll("[data-close-modal]")
-    .forEach((btn) =>
-      btn.addEventListener("click", () => closeModal(listModal))
-    );
-  itemModal
-    ?.querySelectorAll("[data-close-modal]")
-    .forEach((btn) =>
-      btn.addEventListener("click", () => closeModal(itemModal))
-    );
-  deleteModal
-    ?.querySelectorAll("[data-close-modal]")
-    .forEach((btn) =>
-      btn.addEventListener("click", () => closeModal(deleteModal))
-    );
   [listModal, itemModal, deleteModal].forEach((mb) => {
     if (!mb) return;
+    mb.querySelectorAll("[data-close-modal]").forEach((btn) =>
+      btn.addEventListener("click", () => closeModal(mb))
+    );
     mb.addEventListener("click", (e) => {
       if (e.target === mb) closeModal(mb);
     });
@@ -83,7 +69,28 @@ document.addEventListener("DOMContentLoaded", () => {
     try {
       const raw = localStorage.getItem(SHOP_KEY);
       const arr = raw ? JSON.parse(raw) : [];
-      return Array.isArray(arr) ? arr : [];
+      if (!Array.isArray(arr)) return [];
+      for (const list of arr) {
+        const items = Array.isArray(list.items) ? list.items : [];
+        list.items = items.map((it) => {
+          const plainName =
+            typeof it.name === "string" ? it.name.replace(/\*+$/, "") : it.name;
+          const crossedFromName =
+            typeof it.name === "string" && /\*+$/.test(it.name);
+          return {
+            id:
+              it.id ||
+              (crypto.randomUUID
+                ? crypto.randomUUID()
+                : `id_${Date.now()}_${Math.random().toString(36).slice(2)}`),
+            name: plainName || "",
+            crossed:
+              typeof it.crossed === "boolean" ? it.crossed : crossedFromName,
+            addedAt: it.addedAt || Date.now(),
+          };
+        });
+      }
+      return arr;
     } catch {
       return [];
     }
@@ -91,23 +98,21 @@ document.addEventListener("DOMContentLoaded", () => {
   function saveShoppingLists(arr) {
     localStorage.setItem(SHOP_KEY, JSON.stringify(arr));
   }
-
   function newId() {
     return crypto && crypto.randomUUID
       ? crypto.randomUUID()
       : `id_${Date.now()}_${Math.random().toString(36).slice(2)}`;
   }
-
   function getListById(id) {
     return loadShoppingLists().find((l) => l.id === id) || null;
   }
 
   let currentListId = null;
+  let editingItemId = null;
 
   function renderShoppingLists() {
     const lists = loadShoppingLists();
     shoppingListsEl.innerHTML = "";
-
     const count = lists.length;
     if (shoppingListsCount) {
       shoppingListsCount.textContent =
@@ -115,12 +120,10 @@ document.addEventListener("DOMContentLoaded", () => {
           ? "You have 1 shopping list"
           : `You have ${count} shopping lists`;
       shoppingListsCount.style.display = count > 0 ? "block" : "none";
+      shoppingListsCount.style.fontSize = "1.8rem";
     }
-    if (shoppingListsEmpty) {
+    if (shoppingListsEmpty)
       shoppingListsEmpty.style.display = count === 0 ? "block" : "none";
-    }
-
-    shoppingListsCount.style.fontSize = "1.8rem";
     if (count === 0) return;
 
     lists.sort((a, b) => b.createdAt - a.createdAt);
@@ -155,14 +158,6 @@ document.addEventListener("DOMContentLoaded", () => {
         openShoppingList(list.id);
       });
 
-      const renameBtn = document.createElement("button");
-      renameBtn.className = "btn small";
-      renameBtn.textContent = "Rename";
-      renameBtn.addEventListener("click", (e) => {
-        e.stopPropagation();
-        openRenameListModal(list.id);
-      });
-
       const delBtn = document.createElement("button");
       delBtn.className = "btn danger small";
       delBtn.textContent = "Delete";
@@ -171,7 +166,7 @@ document.addEventListener("DOMContentLoaded", () => {
         requestDeleteList(list.id, list.name);
       });
 
-      actions.append(openBtn, renameBtn, delBtn);
+      actions.append(openBtn, delBtn);
 
       li.addEventListener("click", () => openShoppingList(list.id));
 
@@ -204,11 +199,8 @@ document.addEventListener("DOMContentLoaded", () => {
         count === 1 ? "This list has 1 item" : `This list has ${count} items`;
       shoppingItemsCount.style.display = count > 0 ? "block" : "none";
     }
-    if (shoppingItemsEmpty) {
+    if (shoppingItemsEmpty)
       shoppingItemsEmpty.style.display = count === 0 ? "block" : "none";
-    }
-    shoppingItemsCount.style.fontSize = "1.8rem";
-
     if (count === 0) return;
 
     items.sort((a, b) => b.addedAt - a.addedAt);
@@ -225,17 +217,33 @@ document.addEventListener("DOMContentLoaded", () => {
       name.className = "item-name";
       name.textContent = it.name;
 
+      if (it.crossed) {
+        name.style.textDecoration = "line-through";
+        name.style.opacity = "0.6";
+        name.style.color = "red";
+      }
+
       head.append(name);
 
       const actions = document.createElement("div");
       actions.className = "row-actions";
+
+      const crossBtn = document.createElement("button");
+      crossBtn.className = "btn small";
+      crossBtn.textContent = it.crossed ? "Uncross" : "Cross";
+      crossBtn.addEventListener("click", () => toggleCrossItem(it.id));
+
+      const editBtn = document.createElement("button");
+      editBtn.className = "btn small";
+      editBtn.textContent = "Edit";
+      editBtn.addEventListener("click", () => openEditItemModal(it));
 
       const delBtn = document.createElement("button");
       delBtn.className = "btn danger small";
       delBtn.textContent = "Delete";
       delBtn.addEventListener("click", () => requestDeleteItem(it.id, it.name));
 
-      actions.append(delBtn);
+      actions.append(crossBtn, editBtn, delBtn);
 
       const meta = document.createElement("div");
       meta.className = "item-meta";
@@ -246,18 +254,70 @@ document.addEventListener("DOMContentLoaded", () => {
       li.append(head, actions, meta);
       shoppingItemsEl.appendChild(li);
     }
+
+    const deleteListBtn = document.getElementById("deleteListBtn");
+    if (deleteListBtn) {
+      deleteListBtn.onclick = () => {
+        const l = getListById(currentListId);
+        if (!l) return;
+        requestDeleteList(l.id, l.name);
+      };
+    }
+  }
+
+  function toggleCrossItem(itemId) {
+    const lists = loadShoppingLists();
+    const listIdx = lists.findIndex((l) => l.id === currentListId);
+    if (listIdx === -1) return;
+
+    const items = lists[listIdx].items || [];
+    const idx = items.findIndex((it) => it.id === itemId);
+    if (idx === -1) return;
+
+    items[idx].crossed = !items[idx].crossed;
+    lists[listIdx].items = items;
+    saveShoppingLists(lists);
+    renderShoppingItems();
+    renderShoppingLists();
+  }
+
+  function openEditItemModal(item) {
+    editingItemId = item.id;
+    if (itemForm) itemForm.reset();
+    if (itemNameInput) itemNameInput.value = item.name || "";
+    if (itemModalTitle) itemModalTitle.textContent = "Edit Item";
+    if (itemSubmitBtn) itemSubmitBtn.textContent = "Save";
+    openModal(itemModal);
+  }
+
+  function saveEditedItem(newName) {
+    const lists = loadShoppingLists();
+    const listIdx = lists.findIndex((l) => l.id === currentListId);
+    if (listIdx === -1) return;
+
+    const items = lists[listIdx].items || [];
+    const idx = items.findIndex((it) => it.id === editingItemId);
+    if (idx === -1) return;
+
+    items[idx].name = newName;
+    lists[listIdx].items = items;
+    saveShoppingLists(lists);
+    editingItemId = null;
+    renderShoppingItems();
+    renderShoppingLists();
   }
 
   function openShoppingList(listId) {
     currentListId = listId;
     shoppingListsView.style.display = "none";
-    shoppingItemsView.style.display = "block";
+    shoppingItemsView.style.display = "flex";
     renderShoppingItems();
   }
+
   function backToLists() {
     currentListId = null;
     shoppingItemsView.style.display = "none";
-    shoppingListsView.style.display = "block";
+    shoppingListsView.style.display = "flex";
     renderShoppingLists();
   }
 
@@ -267,15 +327,7 @@ document.addEventListener("DOMContentLoaded", () => {
     saveShoppingLists(lists);
     renderShoppingLists();
   }
-  function renameList(id, newName) {
-    const lists = loadShoppingLists();
-    const idx = lists.findIndex((l) => l.id === id);
-    if (idx === -1) return;
-    lists[idx].name = newName;
-    saveShoppingLists(lists);
-    renderShoppingLists();
-    if (currentListId === id) renderShoppingItems();
-  }
+
   function deleteList(id) {
     const lists = loadShoppingLists().filter((l) => l.id !== id);
     saveShoppingLists(lists);
@@ -287,11 +339,17 @@ document.addEventListener("DOMContentLoaded", () => {
     const idx = lists.findIndex((l) => l.id === currentListId);
     if (idx === -1) return;
     lists[idx].items = lists[idx].items || [];
-    lists[idx].items.push({ id: newId(), name, addedAt: Date.now() });
+    lists[idx].items.push({
+      id: newId(),
+      name,
+      crossed: false,
+      addedAt: Date.now(),
+    });
     saveShoppingLists(lists);
     renderShoppingItems();
     renderShoppingLists();
   }
+
   function deleteItemFromCurrentList(itemId) {
     const lists = loadShoppingLists();
     const idx = lists.findIndex((l) => l.id === currentListId);
@@ -305,8 +363,10 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function requestDeleteList(id, name) {
-    deleteTitle.textContent = "Delete Shopping List";
-    deletePrompt.textContent = `Delete the list "${name}" and all its items?`;
+    if (!deleteModal) return;
+    if (deleteTitle) deleteTitle.textContent = "Delete Shopping List";
+    if (deletePrompt)
+      deletePrompt.textContent = `Delete the list "${name}" and all its items?`;
     const handler = () => {
       deleteList(id);
       closeModal(deleteModal);
@@ -314,9 +374,12 @@ document.addEventListener("DOMContentLoaded", () => {
     confirmDeleteBtn.addEventListener("click", handler, { once: true });
     openModal(deleteModal);
   }
+
   function requestDeleteItem(itemId, name) {
-    deleteTitle.textContent = "Remove Item";
-    deletePrompt.textContent = `Remove "${name}" from this list?`;
+    if (!deleteModal) return;
+    if (deleteTitle) deleteTitle.textContent = "Remove Item";
+    if (deletePrompt)
+      deletePrompt.textContent = `Remove "${name}" from this list?`;
     const handler = () => {
       deleteItemFromCurrentList(itemId);
       closeModal(deleteModal);
@@ -325,22 +388,11 @@ document.addEventListener("DOMContentLoaded", () => {
     openModal(deleteModal);
   }
 
-  let listModalCtx = { mode: "create", targetListId: null };
   function openAddListModal() {
-    listModalCtx = { mode: "create", targetListId: null };
+    if (!listForm) return;
     listForm.reset();
-    listModalTitle.textContent = "New Shopping List";
-    listSubmitBtn.textContent = "Create";
-    listNameInput.value = "";
-    openModal(listModal);
-  }
-  function openRenameListModal(listId) {
-    const list = getListById(listId);
-    if (!list) return;
-    listModalCtx = { mode: "rename", targetListId: listId };
-    listModalTitle.textContent = "Rename Shopping List";
-    listSubmitBtn.textContent = "Save";
-    listNameInput.value = list.name;
+    if (listModalTitle) listModalTitle.textContent = "New Shopping List";
+    if (listSubmitBtn) listSubmitBtn.textContent = "Create";
     openModal(listModal);
   }
 
@@ -348,35 +400,33 @@ document.addEventListener("DOMContentLoaded", () => {
   backToListsBtn?.addEventListener("click", backToLists);
   addShoppingItemBtn?.addEventListener("click", () => {
     if (!currentListId) return;
-    itemForm.reset();
+    editingItemId = null;
+    if (itemForm) itemForm.reset();
+    if (itemModalTitle) itemModalTitle.textContent = "Add Item";
+    if (itemSubmitBtn) itemSubmitBtn.textContent = "Add";
     openModal(itemModal);
   });
 
   listForm?.addEventListener("submit", (e) => {
     e.preventDefault();
     const name = (listNameInput.value || "").trim();
-    if (!name) {
-      listNameInput.focus();
-      return;
-    }
-    if (listModalCtx.mode === "create") {
-      createList(name);
-      closeModal(listModal);
-    } else if (listModalCtx.mode === "rename" && listModalCtx.targetListId) {
-      renameList(listModalCtx.targetListId, name);
-      closeModal(listModal);
-    }
+    if (!name) return listNameInput.focus();
+    createList(name);
+    closeModal(listModal);
   });
 
   itemForm?.addEventListener("submit", (e) => {
     e.preventDefault();
     const name = (itemNameInput.value || "").trim();
-    if (!name) {
-      itemNameInput.focus();
-      return;
+    if (!name) return itemNameInput.focus();
+    if (editingItemId) {
+      saveEditedItem(name);
+    } else {
+      addItemToCurrentList(name);
     }
-    addItemToCurrentList(name);
     closeModal(itemModal);
+    if (itemModalTitle) itemModalTitle.textContent = "Add Item";
+    if (itemSubmitBtn) itemSubmitBtn.textContent = "Add";
   });
 
   renderShoppingLists();

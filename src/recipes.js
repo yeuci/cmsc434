@@ -5,8 +5,6 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!el) return;
     el.setAttribute("data-open", "true");
     el.setAttribute("aria-hidden", "false");
-    const f = el.querySelector("input, button, [data-close-modal]");
-    if (f) setTimeout(() => f.focus(), 0);
     document.addEventListener("keydown", escHandler);
   }
   function closeModal(el) {
@@ -24,23 +22,21 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   const SETTINGS_KEY = "appSettings";
+  const USER_RECIPES_KEY = "userRecipes";
+  const LEVELS = ["beginner", "intermediate", "advanced"];
+
   function loadSettings() {
     try {
       const raw = localStorage.getItem(SETTINGS_KEY);
-      const obj = raw ? JSON.parse(raw) : {};
-      return obj ?? {};
+      return raw ? JSON.parse(raw) : {};
     } catch {
       return {};
     }
   }
   function getCookingLevel() {
-    const level = (loadSettings().cookingLevel || "beginner").toLowerCase();
-    return ["beginner", "intermediate", "advanced"].includes(level)
-      ? level
-      : "beginner";
+    const lvl = (loadSettings().cookingLevel || "beginner").toLowerCase();
+    return LEVELS.includes(lvl) ? lvl : "beginner";
   }
-
-  const LEVELS = ["beginner", "intermediate", "advanced"];
 
   const RECIPES = [
     {
@@ -59,7 +55,6 @@ document.addEventListener("DOMContentLoaded", () => {
       recipe: "Peanut Butter Sandwich",
       ingredients: ["bread", "peanut butter"],
     },
-
     {
       level: "intermediate",
       recipe: "French Toast",
@@ -75,7 +70,6 @@ document.addEventListener("DOMContentLoaded", () => {
       recipe: "Garlic Noodles",
       ingredients: ["noodles", "garlic", "butter", "soy sauce"],
     },
-
     {
       level: "advanced",
       recipe: "Omelette",
@@ -117,268 +111,337 @@ document.addEventListener("DOMContentLoaded", () => {
       "Cut and serve.",
     ],
     "French Toast": [
-      "Whisk egg, milk, and a bit of sugar in a shallow bowl.",
-      "Dip both sides of bread into the mixture.",
-      "Cook on a buttered pan over medium heat until golden on both sides.",
+      "Whisk egg, milk, and sugar in a bowl.",
+      "Dip bread slices in the mixture.",
+      "Cook on a buttered pan until golden.",
       "Serve with syrup or fruit.",
     ],
     Pancakes: [
-      "Mix flour, baking powder, milk, and egg into a smooth batter.",
-      "Heat a pan over medium heat and lightly oil it.",
-      "Pour batter to form pancakes; cook until bubbles form, then flip.",
+      "Mix flour, baking powder, milk, and egg.",
+      "Heat a pan over medium heat and oil lightly.",
+      "Pour batter; cook until bubbles form, then flip.",
       "Cook until golden and serve.",
     ],
     "Garlic Noodles": [
-      "Boil noodles according to package directions; drain.",
-      "Melt butter in a pan; add minced garlic and cook briefly.",
-      "Toss noodles with the garlic butter and soy sauce.",
+      "Boil noodles and drain.",
+      "Melt butter, sauté garlic, then toss noodles with soy sauce.",
       "Serve warm.",
     ],
     Omelette: [
-      "Beat eggs with a pinch of salt and pepper.",
+      "Beat eggs with salt and pepper.",
       "Pour into a hot, lightly oiled pan.",
-      "When nearly set, add fillings like cheese.",
-      "Fold and finish cooking.",
+      "Add fillings, fold, and serve.",
     ],
     "Chicken Stir-Fry": [
       "Slice chicken and vegetables.",
-      "Stir-fry chicken in a hot pan with oil until cooked through.",
-      "Add vegetables and garlic; stir-fry until tender-crisp.",
-      "Finish with soy sauce; toss and serve.",
+      "Stir-fry chicken, then add veggies and garlic.",
+      "Add soy sauce and serve hot.",
     ],
     "Tomato Pasta": [
-      "Cook pasta until al dente; reserve some pasta water.",
-      "Sauté garlic in olive oil; add chopped tomato and simmer.",
-      "Toss in pasta with a splash of pasta water.",
-      "Season and serve.",
+      "Cook pasta; save some water.",
+      "Sauté garlic, add tomato, and simmer.",
+      "Toss pasta with sauce and season.",
     ],
   };
 
-  const recipesPage = document.querySelector(".recipes--page");
-  if (!recipesPage) return;
+  function loadUserRecipes() {
+    try {
+      return JSON.parse(localStorage.getItem(USER_RECIPES_KEY)) || [];
+    } catch {
+      return [];
+    }
+  }
+  function saveUserRecipes(list) {
+    localStorage.setItem(USER_RECIPES_KEY, JSON.stringify(list));
+  }
 
-  const header = recipesPage.querySelector(".page-header");
-  let toggleWrap = null;
+  const page = document.querySelector(".recipes--page");
+  if (!page) return;
+  const header = page.querySelector(".page-header");
+  const addBtn = document.getElementById("addRecipeBtn");
 
-  let content = recipesPage.querySelector(".recipes-content");
-  if (!content) {
-    content = document.createElement("div");
-    content.className = "inventory-wrap";
-    content.innerHTML = `
+  const content =
+    page.querySelector(".recipes-content") ||
+    (() => {
+      const div = document.createElement("div");
+      div.className = "inventory-wrap recipes-content";
+      div.innerHTML = `
       <div id="recipesCount" class="item-count"></div>
       <ul id="recipesList" class="ingredient-list" aria-live="polite"></ul>
       <div id="recipesEmpty" class="empty-state">No recipes found.</div>
     `;
-    recipesPage.appendChild(content);
-  }
-  const recipesCount = content.querySelector("#recipesCount");
+      page.appendChild(div);
+      return div;
+    })();
+
   const recipesList = content.querySelector("#recipesList");
+  const recipesCount = content.querySelector("#recipesCount");
   const recipesEmpty = content.querySelector("#recipesEmpty");
 
-  let showAllHigher = false;
+  // let showAll = false;
 
-  function ensureToggle(level) {
-    if (toggleWrap) {
-      toggleWrap.remove();
-      toggleWrap = null;
-    }
-    if (level === "advanced") return;
+  // let toggleWrap = header.querySelector(".showAllWrap");
+  // if (!toggleWrap) {
+  //   toggleWrap = document.createElement("div");
+  //   toggleWrap.className = "showAllWrap";
+  //   header.querySelector(".header-actions")?.appendChild(toggleWrap);
+  // }
 
-    toggleWrap = document.createElement("div");
-    toggleWrap.className = "header-actions";
-    toggleWrap.style.marginLeft = "auto";
+  // const toggleLabel = document.createElement("label");
+  // toggleLabel.className = "row";
+  // toggleLabel.style.cursor = "pointer";
+  // toggleLabel.style.gap = "0.6rem";
+  // const showAllToggle = document.createElement("input");
+  // showAllToggle.type = "checkbox";
+  // const showAllSpan = document.createElement("span");
+  // showAllSpan.textContent = "Show all levels";
+  // toggleLabel.append(showAllToggle, showAllSpan);
+  // toggleWrap.append(toggleLabel);
 
-    const label = document.createElement("label");
-    label.className = "row";
-    label.style.cursor = "pointer";
-    label.style.gap = "0.6rem";
+  let showAll = false;
 
-    const cb = document.createElement("input");
-    cb.type = "checkbox";
-    cb.id = "showAllLevelsToggle";
-    cb.checked = showAllHigher;
+  const actions = header.querySelector(".header-actions");
+  actions.style.display = "flex";
+  actions.style.alignItems = "center";
+  actions.style.gap = "1rem";
 
-    const span = document.createElement("span");
-    span.textContent = "Show all levels";
+  const toggleLabel = document.createElement("label");
+  toggleLabel.className = "row";
+  toggleLabel.style.cursor = "pointer";
+  toggleLabel.style.gap = "1rem";
 
-    cb.addEventListener("change", () => {
-      showAllHigher = cb.checked;
-      renderRecipes();
-    });
+  const showAllToggle = document.createElement("input");
+  showAllToggle.type = "checkbox";
 
-    label.append(cb, span);
-    toggleWrap.appendChild(label);
+  const showAllSpan = document.createElement("span");
+  showAllSpan.textContent = "Show all levels";
 
-    header.appendChild(toggleWrap);
+  toggleLabel.append(showAllToggle, showAllSpan);
+  actions.insertBefore(toggleLabel, addBtn);
+
+  const addModal = document.getElementById("addRecipeModal");
+  const modalTitle = addModal.querySelector("#addRecipeModalTitle");
+  const form = addModal.querySelector("#recipeForm");
+  const nameInput = form.querySelector("#recipeNameInput");
+  const levelSelect = form.querySelector("#recipeLevelSelect");
+  const ingredientsInput = form.querySelector("#recipeIngredientsInput");
+  const stepsInput = form.querySelector("#recipeStepsInput");
+
+  nameInput.placeholder = "Enter recipe name";
+  ingredientsInput.placeholder = "e.g., egg, salt, pepper";
+  stepsInput.placeholder = "1. Step 1\n2. Step 2";
+
+  addModal
+    .querySelectorAll("[data-close-modal]")
+    .forEach((btn) =>
+      btn.addEventListener("click", () => closeModal(addModal))
+    );
+  addModal.addEventListener("click", (e) => {
+    if (e.target === addModal) closeModal(addModal);
+  });
+
+  const deleteModal = document.getElementById("deleteModal");
+  const deletePrompt = deleteModal.querySelector("#deletePrompt");
+  const confirmDeleteBtn = deleteModal.querySelector("#confirmDeleteBtn");
+  let pendingDelete = null;
+
+  deleteModal
+    .querySelectorAll("[data-close-modal]")
+    .forEach((btn) =>
+      btn.addEventListener("click", () => closeModal(deleteModal))
+    );
+  deleteModal.addEventListener("click", (e) => {
+    if (e.target === deleteModal) closeModal(deleteModal);
+  });
+
+  let editTarget = null;
+
+  function openAddModal() {
+    editTarget = null;
+    modalTitle.textContent = "Add Recipe";
+    form.reset();
+    levelSelect.value = getCookingLevel();
+    openModal(addModal);
   }
 
-  function levelsToShow(level, showAll) {
-    if (level === "advanced") return LEVELS;
-    if (level === "intermediate") {
-      return showAll ? LEVELS : ["beginner", "intermediate"];
-    }
-    return showAll ? LEVELS : ["beginner"];
+  function openEditModal(recipe) {
+    editTarget = recipe.recipe;
+    modalTitle.textContent = "Edit Recipe";
+    nameInput.value = recipe.recipe;
+    levelSelect.value = recipe.level;
+    ingredientsInput.value = recipe.ingredients.join(", ");
+    stepsInput.value = (recipe.steps || []).join("\n");
+    openModal(addModal);
   }
+
+  function openDeleteModal(name) {
+    deletePrompt.textContent = `Delete "${name}" from your recipes?`;
+    pendingDelete = name;
+    openModal(deleteModal);
+  }
+
+  confirmDeleteBtn.addEventListener("click", () => {
+    if (!pendingDelete) return;
+    const updated = loadUserRecipes().filter((r) => r.recipe !== pendingDelete);
+    saveUserRecipes(updated);
+    pendingDelete = null;
+    closeModal(deleteModal);
+    renderRecipes();
+  });
+
+  function openStepsModal(recipe) {
+    let modal = document.getElementById("recipeViewModal");
+    if (!modal) {
+      modal = document.createElement("div");
+      modal.id = "recipeViewModal";
+      modal.className = "modal-backdrop";
+      modal.innerHTML = `
+        <div class="modal" role="dialog" aria-modal="true">
+          <h2 id="recipeViewTitle"></h2>
+          <div id="recipeViewSteps"></div>
+          <div class="modal-actions">
+            <button type="button" class="btn" data-close-modal>Close</button>
+          </div>
+        </div>`;
+      document.body.appendChild(modal);
+      modal
+        .querySelectorAll("[data-close-modal]")
+        .forEach((btn) =>
+          btn.addEventListener("click", () => closeModal(modal))
+        );
+      modal.addEventListener("click", (e) => {
+        if (e.target === modal) closeModal(modal);
+      });
+    }
+
+    const titleEl = modal.querySelector("#recipeViewTitle");
+    const stepsEl = modal.querySelector("#recipeViewSteps");
+
+    titleEl.textContent = recipe.recipe;
+    const steps =
+      recipe.steps && recipe.steps.length
+        ? recipe.steps
+        : RECIPES_BY_INSTRUCTIONS[recipe.recipe] || ["No steps available."];
+    stepsEl.innerHTML =
+      "<ol>" + steps.map((s) => `<li>${s}</li>`).join("") + "</ol>";
+
+    openModal(modal);
+  }
+
+  form.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const name = nameInput.value.trim();
+    const level = levelSelect.value;
+    const ingredients = ingredientsInput.value
+      .split(",")
+      .map((x) => x.trim())
+      .filter(Boolean);
+    const steps = stepsInput.value
+      .split("\n")
+      .map((x) => x.trim())
+      .filter(Boolean);
+
+    if (!name || !ingredients.length || !steps.length) return;
+
+    const userRecipes = loadUserRecipes();
+    if (editTarget) {
+      const idx = userRecipes.findIndex((r) => r.recipe === editTarget);
+      if (idx !== -1)
+        userRecipes[idx] = { recipe: name, level, ingredients, steps };
+    } else {
+      userRecipes.push({ recipe: name, level, ingredients, steps });
+    }
+    saveUserRecipes(userRecipes);
+    closeModal(addModal);
+    renderRecipes();
+  });
 
   function renderRecipes() {
     const level = getCookingLevel();
-    ensureToggle(level);
-
-    const includeLevels = levelsToShow(level, showAllHigher);
-
-    const toShow = RECIPES.filter((r) => includeLevels.includes(r.level)).sort(
-      (a, b) => LEVELS.indexOf(a.level) - LEVELS.indexOf(b.level)
+    const include = showAll
+      ? LEVELS
+      : LEVELS.slice(0, LEVELS.indexOf(level) + 1);
+    const userRecipes = loadUserRecipes();
+    const all = [...RECIPES, ...userRecipes].filter((r) =>
+      include.includes(r.level)
     );
 
     recipesList.innerHTML = "";
-
-    if (toShow.length === 0) {
+    if (all.length === 0) {
       recipesEmpty.style.display = "block";
       recipesCount.style.display = "none";
       return;
     }
+
     recipesEmpty.style.display = "none";
     recipesCount.style.display = "block";
-    recipesCount.textContent =
-      toShow.length === 1 ? "1 recipe" : `${toShow.length} recipes`;
+    recipesCount.textContent = `${all.length} recipe${
+      all.length > 1 ? "s" : ""
+    }`;
 
-    const grouped = LEVELS.reduce((acc, lvl) => {
-      acc[lvl] = [];
-      return acc;
-    }, {});
-    toShow.forEach((r) => grouped[r.level].push(r));
+    const grouped = LEVELS.reduce((a, l) => ((a[l] = []), a), {});
+    all.forEach((r) => grouped[r.level].push(r));
 
-    includeLevels.forEach((lvl) => {
-      const group = grouped[lvl];
-      if (!group || group.length === 0) return;
+    LEVELS.forEach((lvl) => {
+      if (!grouped[lvl].length) return;
 
-      const sectionTitle = document.createElement("h2");
-      sectionTitle.className = "item-name";
-      sectionTitle.style.margin = "0.6rem 0";
-      sectionTitle.textContent =
-        lvl === "beginner"
-          ? "Beginner"
-          : lvl === "intermediate"
-          ? "Intermediate"
-          : "Advanced";
-      const titleLi = document.createElement("li");
-      titleLi.className = "item";
-      titleLi.style.background = "transparent";
-      titleLi.style.border = "none";
-      titleLi.style.paddingBottom = "0";
-      titleLi.appendChild(sectionTitle);
-      recipesList.appendChild(titleLi);
+      const title = document.createElement("li");
+      title.className = "item";
+      title.style.border = "none";
+      title.innerHTML = `<h2 class="item-name">${
+        lvl[0].toUpperCase() + lvl.slice(1)
+      }</h2>`;
+      recipesList.appendChild(title);
 
-      group.forEach((r) => {
+      grouped[lvl].forEach((r) => {
         const li = document.createElement("li");
-        li.className = "item clickable";
-        li.dataset.level = r.level;
-
+        li.className = "item";
         const head = document.createElement("div");
         head.className = "item-head";
-
         const name = document.createElement("span");
         name.className = "item-name";
         name.textContent = r.recipe;
-
         head.append(name);
-
-        const actions = document.createElement("div");
-        actions.className = "row-actions";
-        const openBtn = document.createElement("button");
-        openBtn.className = "btn small";
-        openBtn.textContent = "Open";
-        openBtn.addEventListener("click", (e) => {
-          e.stopPropagation();
-          openRecipeModal(r.recipe);
-        });
-        actions.appendChild(openBtn);
 
         const meta = document.createElement("div");
         meta.className = "item-meta";
-        meta.innerHTML = `<span><strong>Ingredients:</strong> ${r.ingredients.join(
-          ", "
-        )}</span>`;
+        meta.textContent = `Ingredients: ${r.ingredients.join(", ")}`;
+
+        const actions = document.createElement("div");
+        actions.className = "row-actions";
+
+        const openBtn = document.createElement("button");
+        openBtn.className = "btn small";
+        openBtn.textContent = "Open";
+        openBtn.addEventListener("click", () => openStepsModal(r));
+        actions.append(openBtn);
+
+        const isUser = userRecipes.some((u) => u.recipe === r.recipe);
+        if (isUser) {
+          const editBtn = document.createElement("button");
+          editBtn.className = "btn small";
+          editBtn.textContent = "Edit";
+          editBtn.addEventListener("click", () => openEditModal(r));
+
+          const delBtn = document.createElement("button");
+          delBtn.className = "btn danger small";
+          delBtn.textContent = "Delete";
+          delBtn.addEventListener("click", () => openDeleteModal(r.recipe));
+
+          actions.append(editBtn, delBtn);
+        }
 
         li.append(head, actions, meta);
-
-        li.addEventListener("click", () => openRecipeModal(r.recipe));
-
         recipesList.appendChild(li);
       });
     });
   }
 
-  function ensureRecipeModal() {
-    let mb = document.getElementById("recipeModal");
-    if (mb) return mb;
-
-    mb = document.createElement("div");
-    mb.id = "recipeModal";
-    mb.className = "modal-backdrop";
-    mb.setAttribute("data-open", "false");
-    mb.setAttribute("aria-hidden", "true");
-    mb.innerHTML = `
-      <div class="modal" role="dialog" aria-labelledby="recipeModalTitle" aria-modal="true">
-        <h2 id="recipeModalTitle">Recipe</h2>
-        <div id="recipeSteps"></div>
-        <div class="modal-actions">
-          <button type="button" class="btn" data-close-modal>Close</button>
-        </div>
-      </div>
-    `;
-    document.body.appendChild(mb);
-
-    mb.querySelectorAll("[data-close-modal]").forEach((btn) =>
-      btn.addEventListener("click", () => closeModal(mb))
-    );
-    mb.addEventListener("click", (e) => {
-      if (e.target === mb) closeModal(mb);
-    });
-
-    return mb;
-  }
-
-  function openRecipeModal(recipeName) {
-    const mb = ensureRecipeModal();
-    const title = mb.querySelector("#recipeModalTitle");
-    const stepsWrap = mb.querySelector("#recipeSteps");
-
-    title.textContent = recipeName;
-
-    const steps = RECIPES_BY_INSTRUCTIONS[recipeName] || [
-      "No steps available.",
-    ];
-
-    const ol = document.createElement("ol");
-    ol.style.display = "grid";
-    ol.style.gap = "0.8rem";
-    ol.style.paddingLeft = "2rem";
-    ol.style.fontSize = "1.5rem";
-    ol.style.lineHeight = "1.6";
-    ol.style.color = "var(--ds-ink)";
-    ol.style.listStyle = "decimal";
-    ol.style.listStylePosition = "outside";
-
-    steps.forEach((s) => {
-      const li = document.createElement("li");
-      li.textContent = s;
-      ol.appendChild(li);
-    });
-
-    stepsWrap.innerHTML = "";
-    stepsWrap.appendChild(ol);
-
-    openModal(mb);
-  }
-
-  const recipesNav = document.querySelector(".navigation .nav-3");
-  if (recipesNav) {
-    recipesNav.addEventListener("click", () => {
-      showAllHigher = false;
-      renderRecipes();
-    });
-  }
+  addBtn.addEventListener("click", openAddModal);
+  showAllToggle.addEventListener("change", () => {
+    showAll = showAllToggle.checked;
+    renderRecipes();
+  });
 
   renderRecipes();
 });
